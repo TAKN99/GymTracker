@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0d14">
+<title>GymTracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0d0d14;--bg2:#13131c;--bg3:#1c1c28;--card:#181822;
+  --border:#252535;--accent:#c8ff00;--text:#efeffa;--muted:#5a5a72;
+  --push:#ff6b35;--pull:#5c9eff;--legs:#b06aff;--r:14px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+body{display:flex;flex-direction:column}
+
+/* APP SHELL */
+#setupWrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;overflow-y:auto;gap:0}
+#app{flex:1;display:none;flex-direction:column;overflow:hidden;min-height:0}
+#pageWrap{flex:1;position:relative;overflow:hidden;min-height:0}
+.page{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;opacity:0;pointer-events:none;transition:opacity .2s}
+.page.active{opacity:1;pointer-events:all}
+
+/* SETUP */
+.logo{font-family:'Bebas Neue';font-size:52px;color:var(--accent);letter-spacing:4px;line-height:1}
+.logo-sub{color:var(--muted);font-size:14px;margin-bottom:32px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;width:100%;max-width:420px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.field input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 13px;color:var(--text);font-size:12px;font-family:monospace}
+.field input:focus{outline:none;border-color:var(--accent)}
+.btn{width:100%;background:var(--accent);color:#000;border:none;border-radius:11px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:6px}
+#setupStatus{margin-top:10px;font-size:13px;text-align:center;color:var(--muted);min-height:18px}
+#setupStatus.err{color:#ff5566}
+#setupStatus.ok{color:var(--accent)}
+
+/* HEADER */
+.hdr{flex-shrink:0;padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.hdr-title{font-family:'Bebas Neue';font-size:26px;letter-spacing:2px;color:var(--accent);flex:1}
+.hdr-right{font-size:12px;color:var(--muted);text-align:right}
+.back{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;padding:0;line-height:1}
+
+/* SCROLL */
+.scroll{flex:1;overflow-y:auto;padding:14px 18px;-webkit-overflow-scrolling:touch;min-height:0}
+.scroll::-webkit-scrollbar{display:none}
+
+/* NAV */
+#nav{flex-shrink:0;display:flex;background:var(--bg2);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0)}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 8px;background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s}
+.nb.active{color:var(--accent)}
+.ni{font-size:20px;line-height:1}
+
+/* HOME */
+.stats-row{display:flex;gap:8px;margin-bottom:18px}
+.sc{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center}
+.sn{font-family:'Bebas Neue';font-size:30px;color:var(--accent);line-height:1}
+.sl{font-size:10px;color:var(--muted);margin-top:2px}
+.stitle{font-family:'Bebas Neue';font-size:16px;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px}
+.dc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:10px;cursor:pointer;position:relative;overflow:hidden;transition:transform .1s}
+.dc:active{transform:scale(.98)}
+.dc::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.dc.push::after{background:var(--push)}.dc.pull::after{background:var(--pull)}.dc.legs::after{background:var(--legs)}
+.dtop{display:flex;align-items:center;justify-content:space-between}
+.dn{font-family:'Bebas Neue';font-size:24px;letter-spacing:1.5px}
+.dc.push .dn{color:var(--push)}.dc.pull .dn{color:var(--pull)}.dc.legs .dn{color:var(--legs)}
+.dl{font-size:11px;color:var(--muted);margin-top:3px}
+.dexs{font-size:12px;color:var(--muted);margin-top:6px}
+.sbtn{background:var(--accent);color:#000;border:none;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif}
+.ri{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dot.push{background:var(--push)}.dot.pull{background:var(--pull)}.dot.legs{background:var(--legs)}
+
+/* LOG */
+.lb{background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:14px}
+.ll{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.lv{font-size:13px;font-weight:500}
+.exc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:9px}
+.exh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px}
+.exn{font-size:14px;font-weight:600;line-height:1.3}
+.exl{font-size:11px;color:var(--muted);text-align:right;flex-shrink:0}
+.sw{display:flex;flex-direction:column;gap:7px}
+.sr{display:flex;align-items:center;gap:7px}
+.sl2{font-size:11px;color:var(--muted);width:22px;flex-shrink:0}
+.ig{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:3px 3px 3px 10px;flex:1}
+.ig input{background:none;border:none;color:var(--text);font-size:15px;font-weight:500;min-width:0;width:100%;font-family:'DM Sans',sans-serif}
+.ig input:focus{outline:none}
+.ig .u{font-size:10px;color:var(--muted);flex-shrink:0}
+.ic{width:30px;height:30px;border-radius:7px;border:none;background:var(--border);color:var(--text);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ic:active{background:var(--accent);color:#000}
+.savebtn{width:100%;background:var(--accent);color:#000;border:none;border-radius:13px;padding:16px;font-size:16px;font-weight:700;cursor:pointer;margin-top:6px;font-family:'DM Sans',sans-serif}
+.savebtn:active{opacity:.85}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+.badge.push{background:rgba(255,107,53,.15);color:var(--push)}
+.badge.pull{background:rgba(92,158,255,.15);color:var(--pull)}
+.badge.legs{background:rgba(176,106,255,.15);color:var(--legs)}
+
+/* HISTORY */
+.frow{display:flex;gap:6px;margin-bottom:14px}
+.fb{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif}
+.fb.all.on{background:var(--accent);color:#000;border-color:var(--accent)}
+.fb.push.on{background:rgba(255,107,53,.15);color:var(--push);border-color:var(--push)}
+.fb.pull.on{background:rgba(92,158,255,.15);color:var(--pull);border-color:var(--pull)}
+.fb.legs.on{background:rgba(176,106,255,.15);color:var(--legs);border-color:var(--legs)}
+.hi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden}
+.hh{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer}
+.hinfo{flex:1}
+.hn{font-size:13px;font-weight:600}
+.hd2{font-size:11px;color:var(--muted);margin-top:2px}
+.hchev{color:var(--muted);font-size:16px;transition:transform .2s}
+.hchev.open{transform:rotate(90deg)}
+.hdet{display:none;padding:0 14px 12px;border-top:1px solid var(--border)}
+.hdet.open{display:block}
+.her{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.her:last-child{border:none}
+.hen{color:var(--muted)}
+.hev{font-weight:500;text-align:right;max-width:55%}
+
+/* CHARTS */
+.ttabs{display:flex;gap:7px;margin-bottom:14px}
+.tt{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px;font-size:13px;cursor:pointer;text-align:center;font-family:'DM Sans',sans-serif;color:var(--muted)}
+.tt.push.on{background:rgba(255,107,53,.15);color:var(--push);border-color:var(--push)}
+.tt.pull.on{background:rgba(92,158,255,.15);color:var(--pull);border-color:var(--pull)}
+.tt.legs.on{background:rgba(176,106,255,.15);color:var(--legs);border-color:var(--legs)}
+.chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:'DM Sans',sans-serif;color:var(--text)}
+.chip.on{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+.cc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.ct{font-size:13px;font-weight:600;margin-bottom:2px}
+.cs{font-size:11px;color:var(--muted);margin-bottom:12px}
+.cw{position:relative;height:170px}
+
+/* SETTINGS */
+.sti{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;margin-top:16px}
+.si{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:13px 14px;margin-bottom:7px;display:flex;align-items:center;gap:11px;cursor:pointer}
+.sic{font-size:18px}
+.silab{font-size:14px;font-weight:500}
+.sisub{font-size:11px;color:var(--muted);margin-top:1px}
+.siarr{color:var(--muted);margin-left:auto}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;display:none;align-items:flex-end;backdrop-filter:blur(3px)}
+.ov.open{display:flex}
+.modal{background:var(--bg2);border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0));width:100%;max-height:88vh;overflow-y:auto;border-top:1px solid var(--border)}
+.mh{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px}
+.mt{font-family:'Bebas Neue';font-size:20px;letter-spacing:1.5px;margin-bottom:16px}
+.mf{margin-bottom:12px}
+.mf label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.mf input,.mf select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:11px 13px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif}
+.mf input:focus,.mf select:focus{outline:none;border-color:var(--accent)}
+.mf select option{background:var(--bg3)}
+.mbtns{display:flex;gap:8px;margin-top:6px}
+.mc{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:13px;font-size:14px;cursor:pointer;color:var(--text);font-family:'DM Sans',sans-serif}
+.ms{flex:2;background:var(--accent);border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:#000;font-family:'DM Sans',sans-serif}
+.sqlbox{width:100%;height:190px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--accent);font-size:11px;font-family:monospace;resize:none}
+
+/* MISC */
+.toast{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom,0));left:50%;transform:translateX(-50%) translateY(10px);background:var(--accent);color:#000;padding:10px 22px;border-radius:100px;font-size:13px;font-weight:600;opacity:0;transition:all .25s;z-index:99;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.ld{display:flex;align-items:center;justify-content:center;padding:32px;color:var(--muted);font-size:13px;gap:8px}
+.sp{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:36px 20px;color:var(--muted);font-size:13px}
+.ei{font-size:40px;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<div id="setupWrap">
+  <div class="logo">GYMTRACKER</div>
+  <p class="logo-sub">Verbinde deine Datenbank</p>
+  <div class="card">
+    <div class="field"><label>Project URL</label>
+      <input id="cfgUrl" type="url" placeholder="https://xxxxx.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+    <div class="field"><label>API Key</label>
+      <input id="cfgKey" type="text" placeholder="sb_publishable_..." autocomplete="off" autocorrect="off" spellcheck="false"></div>
+    <button class="btn" onclick="doSetup()">Verbinden &amp; Starten</button>
+    <div id="setupStatus"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="pageWrap">
+
+    <!-- HOME -->
+    <div class="page active" id="pgHome">
+      <div class="hdr"><div class="hdr-title">GYMTRACKER</div><div class="hdr-right" id="homeDate"></div></div>
+      <div class="scroll">
+        <div class="stats-row">
+          <div class="sc"><div class="sn" id="stTotal">-</div><div class="sl">Sessions</div></div>
+          <div class="sc"><div class="sn" id="stWeek">-</div><div class="sl">Diese Woche</div></div>
+          <div class="sc"><div class="sn" id="stStreak">-</div><div class="sl">Streak</div></div>
+        </div>
+        <div class="stitle">Training starten</div>
+        <div class="dc push" onclick="startLog('push')">
+          <div class="dtop"><div><div class="dn">PUSH DAY</div><div class="dl" id="lastPush">-</div></div>
+          <button class="sbtn" onclick="event.stopPropagation();startLog('push')">START &#8594;</button></div>
+          <div class="dexs" id="exsPush"></div>
+        </div>
+        <div class="dc pull" onclick="startLog('pull')">
+          <div class="dtop"><div><div class="dn">PULL DAY</div><div class="dl" id="lastPull">-</div></div>
+          <button class="sbtn" onclick="event.stopPropagation();startLog('pull')">START &#8594;</button></div>
+          <div class="dexs" id="exsPull"></div>
+        </div>
+        <div class="dc legs" onclick="startLog('legs')">
+          <div class="dtop"><div><div class="dn">LEG DAY</div><div class="dl" id="lastLegs">-</div></div>
+          <button class="sbtn" onclick="event.stopPropagation();startLog('legs')">START &#8594;</button></div>
+          <div class="dexs" id="exsLegs"></div>
+        </div>
+        <div class="stitle" style="margin-top:8px">Letzte Trainings</div>
+        <div id="recentList"><div class="ld"><div class="sp"></div>Laedt...</div></div>
+        <div style="height:8px"></div>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="page" id="pgLog">
+      <div class="hdr">
+        <button class="back" onclick="goHome()">&#8592;</button>
+        <div style="flex:1"><div class="hdr-title" id="logTitle">PUSH DAY</div><span class="badge push" id="logBadge">PUSH</span></div>
+        <div class="hdr-right" id="logDate"></div>
+      </div>
+      <div class="scroll">
+        <div class="lb"><div class="ll">Letztes Training dieser Art</div><div class="lv" id="logLastDate">-</div></div>
+        <div id="exList"></div>
+        <button class="savebtn" onclick="saveSession()">&#128190; Training speichern</button>
+        <div style="height:16px"></div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="page" id="pgHistory">
+      <div class="hdr"><div class="hdr-title">VERLAUF</div></div>
+      <div class="scroll">
+        <div class="frow">
+          <button class="fb all on" id="fAll" onclick="setFilter('all')">Alle</button>
+          <button class="fb push" id="fPush" onclick="setFilter('push')">Push</button>
+          <button class="fb pull" id="fPull" onclick="setFilter('pull')">Pull</button>
+          <button class="fb legs" id="fLegs" onclick="setFilter('legs')">Legs</button>
+        </div>
+        <div id="histList"><div class="ld"><div class="sp"></div>Laedt...</div></div>
+        <div style="height:8px"></div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="page" id="pgCharts">
+      <div class="hdr"><div class="hdr-title">ENTWICKLUNG</div></div>
+      <div class="scroll">
+        <div class="ttabs">
+          <button class="tt push on" id="ctPush" onclick="setChartType('push')">Push</button>
+          <button class="tt pull" id="ctPull" onclick="setChartType('pull')">Pull</button>
+          <button class="tt legs" id="ctLegs" onclick="setChartType('legs')">Legs</button>
+        </div>
+        <div class="chips" id="chartChips"></div>
+        <div id="chartArea"><div class="empty"><div class="ei">&#128200;</div>Uebung auswaehlen</div></div>
+        <div style="height:8px"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="pgSettings">
+      <div class="hdr"><div class="hdr-title">EINSTELLUNGEN</div></div>
+      <div class="scroll">
+        <div class="sti">Uebungen</div>
+        <div class="si" onclick="openAddEx()"><span class="sic">&#10133;</span><div><div class="silab">Uebung hinzufuegen</div><div class="sisub">Neue Uebung zu einem Tag</div></div><span class="siarr">&#8250;</span></div>
+        <div class="si" onclick="openManageEx()"><span class="sic">&#128203;</span><div><div class="silab">Uebungen verwalten</div><div class="sisub">Aktiv / Inaktiv</div></div><span class="siarr">&#8250;</span></div>
+        <div class="sti">Daten</div>
+        <div class="si" onclick="doExport()"><span class="sic">&#128228;</span><div><div class="silab">Daten exportieren</div><div class="sisub">JSON Backup</div></div><span class="siarr">&#8250;</span></div>
+        <div class="si" onclick="doImportSeed()"><span class="sic">&#128229;</span><div><div class="silab">Letzte Trainings importieren</div><div class="sisub">Aus Notizen (einmalig)</div></div><span class="siarr">&#8250;</span></div>
+        <div class="si" onclick="resetConn()"><span class="sic">&#128295;</span><div><div class="silab">Verbindung zuruecksetzen</div><div class="sisub">Andere Datenbank</div></div><span class="siarr">&#8250;</span></div>
+        <div class="sti">Info</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:11px;padding:13px 14px">
+          <div style="font-size:12px;color:var(--muted);line-height:1.7">GymTracker v1.1<br><span id="infoUrl" style="font-size:10px;opacity:.6"></span></div>
+        </div>
+        <div style="height:8px"></div>
+      </div>
+    </div>
+
+  </div>
+  <nav id="nav">
+    <button class="nb active" id="nbHome" onclick="showPage('Home')"><span class="ni">&#127968;</span>Home</button>
+    <button class="nb" id="nbHistory" onclick="showPage('History')"><span class="ni">&#128197;</span>Verlauf</button>
+    <button class="nb" id="nbCharts" onclick="showPage('Charts')"><span class="ni">&#128200;</span>Charts</button>
+    <button class="nb" id="nbSettings" onclick="showPage('Settings')"><span class="ni">&#9881;</span>Settings</button>
+  </nav>
+</div>
+
+<!-- MODALS -->
+<div class="ov" id="mAddEx">
+  <div class="modal">
+    <div class="mh"></div><div class="mt">UEBUNG HINZUFUEGEN</div>
+    <div class="mf"><label>Name</label><input id="nxName" type="text" placeholder="z.B. Dips"></div>
+    <div class="mf"><label>Trainingstag</label><select id="nxType"><option value="push">Push Day</option><option value="pull">Pull Day</option><option value="legs">Leg Day</option></select></div>
+    <div class="mf"><label>Typ</label><select id="nxWeight"><option value="1">Gewicht + Wiederholungen</option><option value="0">Nur Wiederholungen</option><option value="2">Nur Zeit (Minuten)</option></select></div>
+    <div class="mf"><label>Anzahl Sets</label><input id="nxSets" type="number" value="3" min="1" max="10"></div>
+    <div class="mbtns"><button class="mc" onclick="closeM('mAddEx')">Abbrechen</button><button class="ms" onclick="saveNewEx()">Speichern</button></div>
+  </div>
+</div>
+
+<div class="ov" id="mManageEx">
+  <div class="modal">
+    <div class="mh"></div><div class="mt">UEBUNGEN VERWALTEN</div>
+    <div id="manageList"></div>
+    <div class="mbtns" style="margin-top:14px"><button class="mc" onclick="closeM('mManageEx')">Schliessen</button></div>
+  </div>
+</div>
+
+<div class="ov" id="mSQL">
+  <div class="modal">
+    <div class="mh"></div><div class="mt">DATENBANK EINRICHTEN</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+      supabase.com &#8594; Projekt &#8594; <strong style="color:var(--text)">SQL Editor</strong> &#8594; New Query &#8594; Einfuegen &#8594; <strong style="color:var(--text)">Run</strong>
+    </p>
+    <textarea class="sqlbox" id="sqlBox" readonly></textarea>
+    <div class="mbtns" style="margin-top:10px">
+      <button class="mc" onclick="copySQL()">&#128203; Kopieren</button>
+      <button class="ms" onclick="location.reload()">&#10003; Fertig, neu laden</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var SB_URL='', SB_KEY='';
+var exercises=[], sessions=[];
+var logType='push', logLastData={};
+var histFilter='all', chartType='push', chartEx=null;
+var myCharts={};
+
+var SQL_SETUP = [
+  "CREATE TABLE IF NOT EXISTS exercises (",
+  "  id BIGSERIAL PRIMARY KEY,",
+  "  name TEXT NOT NULL,",
+  "  type TEXT NOT NULL,",
+  "  has_weight INTEGER DEFAULT 1,",
+  "  sets INTEGER DEFAULT 3,",
+  "  sort_order INTEGER DEFAULT 0,",
+  "  active BOOLEAN DEFAULT true,",
+  "  created_at TIMESTAMPTZ DEFAULT NOW()",
+  ");",
+  "",
+  "CREATE TABLE IF NOT EXISTS sessions (",
+  "  id BIGSERIAL PRIMARY KEY,",
+  "  type TEXT NOT NULL,",
+  "  date DATE NOT NULL,",
+  "  created_at TIMESTAMPTZ DEFAULT NOW()",
+  ");",
+  "",
+  "CREATE TABLE IF NOT EXISTS session_exercises (",
+  "  id BIGSERIAL PRIMARY KEY,",
+  "  session_id BIGINT REFERENCES sessions(id) ON DELETE CASCADE,",
+  "  exercise_name TEXT,",
+  "  sets_data JSONB,",
+  "  created_at TIMESTAMPTZ DEFAULT NOW()",
+  ");",
+  "",
+  "ALTER TABLE exercises DISABLE ROW LEVEL SECURITY;",
+  "ALTER TABLE sessions DISABLE ROW LEVEL SECURITY;",
+  "ALTER TABLE session_exercises DISABLE ROW LEVEL SECURITY;"
+].join("\n");
+
+var DEFAULTS = {
+  push:[
+    {name:'Aufwaermen',type:'push',has_weight:2,sets:1,sort_order:0},
+    {name:'Dips',type:'push',has_weight:0,sets:3,sort_order:1},
+    {name:'Push-up',type:'push',has_weight:0,sets:3,sort_order:2},
+    {name:'Liegestuetz passiv',type:'push',has_weight:0,sets:3,sort_order:3},
+    {name:'Schulter Pull',type:'push',has_weight:1,sets:3,sort_order:4},
+    {name:'Unterarm Curls',type:'push',has_weight:1,sets:3,sort_order:5},
+    {name:'Trizep Band',type:'push',has_weight:1,sets:3,sort_order:6},
+    {name:'Hantel Brust',type:'push',has_weight:1,sets:3,sort_order:7},
+    {name:'Bauch Routine',type:'push',has_weight:0,sets:3,sort_order:8}
+  ],
+  pull:[
+    {name:'Aufwaermen',type:'pull',has_weight:2,sets:1,sort_order:0},
+    {name:'Rudern Sitzend',type:'pull',has_weight:1,sets:3,sort_order:1},
+    {name:'Ruecken Ups',type:'pull',has_weight:1,sets:3,sort_order:2},
+    {name:'Pull Up',type:'pull',has_weight:0,sets:3,sort_order:3},
+    {name:'Curls gerade',type:'pull',has_weight:1,sets:3,sort_order:4},
+    {name:'Curls schraeg',type:'pull',has_weight:1,sets:1,sort_order:5},
+    {name:'Schulter Side Ups',type:'pull',has_weight:1,sets:3,sort_order:6},
+    {name:'Schulter Up Ups',type:'pull',has_weight:1,sets:3,sort_order:7},
+    {name:'Push Ups breit',type:'pull',has_weight:0,sets:3,sort_order:8},
+    {name:'Bauch Routine',type:'pull',has_weight:0,sets:3,sort_order:9}
+  ],
+  legs:[
+    {name:'Aufwaermen',type:'legs',has_weight:2,sets:1,sort_order:0},
+    {name:'Kniebeugen',type:'legs',has_weight:1,sets:3,sort_order:1},
+    {name:'Beinpresse',type:'legs',has_weight:1,sets:3,sort_order:2},
+    {name:'Ausfallschritte',type:'legs',has_weight:0,sets:3,sort_order:3},
+    {name:'Waden',type:'legs',has_weight:0,sets:3,sort_order:4},
+    {name:'Bauch Routine',type:'legs',has_weight:0,sets:3,sort_order:5}
+  ]
+};
+
+// Echte Trainingsdaten aus deinen Notizen (letzte 2 je Tag)
+// Werte aus den Sets: has_weight=2 -> {minutes}, =1 -> {weight,reps}, =0 -> {reps}
+var SEED_SESSIONS = [
+  // ── PUSH 21.05.26 ──
+  {type:'push', date:'2026-05-21', items:{
+    'Aufwaermen':[{minutes:10}],
+    'Dips':[{reps:5},{reps:5},{reps:5}],
+    'Push-up':[{reps:12},{reps:12},{reps:12}],
+    'Liegestuetz passiv':[{reps:12},{reps:12},{reps:12}],
+    'Unterarm Curls':[{weight:10,reps:12},{weight:10,reps:12},{weight:10,reps:12}],
+    'Hantel Brust':[{weight:10,reps:14},{weight:10,reps:14},{weight:10,reps:14}],
+    'Schulter Pull':[{weight:10,reps:12},{weight:10,reps:12},{weight:10,reps:12}],
+    'Trizep Band':[{weight:35,reps:12},{weight:35,reps:12},{weight:35,reps:12}],
+    'Bauch Routine':[{reps:1}]
+  }},
+  // ── PUSH 05.06.26 (neuestes) ──
+  {type:'push', date:'2026-06-05', items:{
+    'Aufwaermen':[{minutes:10}],
+    'Dips':[{reps:5},{reps:5},{reps:5}],
+    'Push-up':[{reps:14},{reps:14},{reps:14}],
+    'Liegestuetz passiv':[{reps:14},{reps:14},{reps:14}],
+    'Unterarm Curls':[{weight:10,reps:12},{weight:10,reps:12},{weight:10,reps:12}],
+    'Hantel Brust':[{weight:10,reps:14},{weight:10,reps:14},{weight:10,reps:14}],
+    'Schulter Pull':[{weight:12,reps:12},{weight:12,reps:12},{weight:12,reps:12}],
+    'Trizep Band':[{weight:35,reps:12},{weight:35,reps:12},{weight:35,reps:12}],
+    'Bauch Routine':[{reps:1},{reps:1},{reps:1}]
+  }},
+  // ── PULL 17.05.26 ──
+  {type:'pull', date:'2026-05-17', items:{
+    'Aufwaermen':[{minutes:5}],
+    'Rudern Sitzend':[{weight:30,reps:12},{weight:30,reps:12},{weight:30,reps:12}],
+    'Ruecken Ups':[{weight:0,reps:12},{weight:0,reps:12},{weight:0,reps:12}],
+    'Pull Up':[{reps:2},{reps:2},{reps:2}],
+    'Curls gerade':[{weight:10,reps:12},{weight:10,reps:12},{weight:10,reps:12}],
+    'Curls schraeg':[{weight:10,reps:12}],
+    'Schulter Side Ups':[{weight:5,reps:12},{weight:5,reps:12},{weight:5,reps:12}],
+    'Schulter Up Ups':[{weight:10,reps:8},{weight:10,reps:8},{weight:10,reps:8}],
+    'Push Ups breit':[{reps:10},{reps:10},{reps:10}],
+    'Bauch Routine':[{reps:1},{reps:1},{reps:1}]
+  }},
+  // ── PULL 02.06.26 (neuestes) ──
+  {type:'pull', date:'2026-06-02', items:{
+    'Aufwaermen':[{minutes:5}],
+    'Rudern Sitzend':[{weight:30,reps:12},{weight:30,reps:12},{weight:30,reps:12}],
+    'Ruecken Ups':[{weight:0,reps:12},{weight:0,reps:12},{weight:0,reps:12}],
+    'Pull Up':[{reps:3},{reps:3},{reps:3}],
+    'Curls gerade':[{weight:12,reps:12},{weight:12,reps:12},{weight:12,reps:12}],
+    'Curls schraeg':[{weight:12,reps:12}],
+    'Schulter Side Ups':[{weight:6,reps:12},{weight:6,reps:12},{weight:6,reps:12}],
+    'Schulter Up Ups':[{weight:10,reps:8},{weight:10,reps:8},{weight:10,reps:8}],
+    'Push Ups breit':[{reps:11},{reps:11},{reps:11}],
+    'Bauch Routine':[{reps:1},{reps:1},{reps:1}]
+  }}
+];
+
+async function seedSessions() {
+  for(var i=0;i<SEED_SESSIONS.length;i++){
+    var s=SEED_SESSIONS[i];
+    try{
+      var res=await sb('sessions','POST',{type:s.type,date:s.date});
+      var sess=res[0]||res;
+      var names=Object.keys(s.items);
+      for(var n=0;n<names.length;n++){
+        await sb('session_exercises','POST',{session_id:sess.id,exercise_name:names[n],sets_data:s.items[names[n]]});
+      }
+    }catch(e){}
+  }
+}
+
+async function sb(path, method, body) {
+  method = method || 'GET';
+  var h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+  if(method==='POST'||method==='PATCH') h['Prefer']='return=representation';
+  var opts = {method:method, headers:h};
+  if(body) opts.body = JSON.stringify(body);
+  var r = await fetch(SB_URL+'/rest/v1/'+path, opts);
+  var t = await r.text();
+  if(!r.ok) throw new Error(t);
+  return t ? JSON.parse(t) : [];
+}
+
+async function doSetup() {
+  var url = document.getElementById('cfgUrl').value.trim().replace(/\/$/, '');
+  var key = document.getElementById('cfgKey').value.trim();
+  var st = document.getElementById('setupStatus');
+  if(!url||!key){setStatus('Bitte beide Felder ausfullen','err');return;}
+  SB_URL=url; SB_KEY=key;
+  setStatus('Verbinde...','');
+  try {
+    var r = await sb('exercises?limit=1');
+    var exCheck = await sb('exercises?limit=5');
+    if(exCheck.length===0){
+      setStatus('Anlegen der Uebungen...','');
+      await seedEx();
+      setStatus('Importiere letzte Trainings...','');
+      await seedSessions();
+    }
+    setStatus('Verbunden!','ok');
+    try{localStorage.setItem('gt_url',url);localStorage.setItem('gt_key',key);}catch(e){}
+    setTimeout(launchApp, 600);
+  } catch(e) {
+    var msg = e.message||'';
+    if(msg.includes('relation')||msg.includes('does not exist')||msg.includes('42P01')||msg.indexOf('"exercises"')>=0||msg.includes('exercises')) {
+      document.getElementById('sqlBox').value = SQL_SETUP;
+      openM('mSQL');
+      setStatus('Tabellen fehlen - SQL ausfuehren','err');
+    } else {
+      setStatus('Fehler: '+msg.slice(0,100),'err');
+    }
+  }
+}
+
+function setStatus(msg,cls){var el=document.getElementById('setupStatus');el.textContent=msg;el.className=cls||'';}
+
+async function seedEx() {
+  var all = DEFAULTS.push.concat(DEFAULTS.pull).concat(DEFAULTS.legs);
+  for(var i=0;i<all.length;i++){try{await sb('exercises','POST',all[i]);}catch(e){}}
+}
+
+function copySQL(){
+  var el=document.getElementById('sqlBox');
+  if(navigator.clipboard){navigator.clipboard.writeText(el.value).then(function(){toast('SQL kopiert!');});}
+  else{el.select();document.execCommand('copy');toast('Kopiert!');}
+}
+
+async function launchApp() {
+  document.getElementById('setupWrap').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('homeDate').textContent=new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('infoUrl').textContent=SB_URL;
+  await loadAll();
+}
+
+async function loadAll() {
+  exercises = await sb('exercises?order=sort_order.asc&active=eq.true');
+  sessions = await sb('sessions?order=date.desc,id.desc&limit=300');
+  renderHome();
+  renderHistory();
+  renderChartChips();
+}
+
+function renderHome() {
+  ['push','pull','legs'].forEach(function(t){
+    var last=sessions.find(function(s){return s.type===t;});
+    var el=document.getElementById('last'+cap(t));
+    el.textContent=last?'Zuletzt: '+fDateFull(last.date):'Noch kein Training';
+    var exEl=document.getElementById('exs'+cap(t));
+    exEl.textContent=exercises.filter(function(e){return e.type===t;}).slice(1,4).map(function(e){return e.name;}).join(' · ');
+  });
+  document.getElementById('stTotal').textContent=sessions.length;
+  var wk=new Date(); wk.setDate(wk.getDate()-7);
+  document.getElementById('stWeek').textContent=sessions.filter(function(s){return new Date(s.date+'T12:00:00')>=wk;}).length;
+  var streak=0, today=new Date(); today.setHours(0,0,0,0);
+  var dates=[...new Set(sessions.map(function(s){return s.date;}))].sort().reverse();
+  for(var i=0;i<dates.length;i++){
+    var d=new Date(dates[i]+'T12:00:00'); d.setHours(0,0,0,0);
+    if(Math.round((today-d)/86400000)<=i+1) streak++;
+    else break;
+  }
+  document.getElementById('stStreak').textContent=streak;
+  var el=document.getElementById('recentList');
+  var r=sessions.slice(0,5);
+  if(!r.length){el.innerHTML='<div class="empty"><div class="ei">&#128170;</div>Noch kein Training - los!</div>';return;}
+  el.innerHTML=r.map(function(s){
+    return '<div class="ri"><div class="dot '+s.type+'"></div><div><div style="font-size:13px;font-weight:500">'+s.type.toUpperCase()+' DAY</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+fDateFull(s.date)+'</div></div></div>';
+  }).join('');
+}
+
+async function startLog(type) {
+  logType=type;
+  document.getElementById('logTitle').textContent=type.toUpperCase()+' DAY';
+  var badge=document.getElementById('logBadge');
+  badge.className='badge '+type; badge.textContent=type.toUpperCase();
+  document.getElementById('logDate').textContent=new Date().toLocaleDateString('de-DE',{day:'numeric',month:'short',year:'numeric'});
+  var last=sessions.find(function(s){return s.type===type;});
+  document.getElementById('logLastDate').textContent=last?fDateFull(last.date):'Erstes Training - viel Erfolg!';
+  logLastData={};
+  if(last){
+    try{
+      var se=await sb('session_exercises?session_id=eq.'+last.id);
+      se.forEach(function(x){logLastData[x.exercise_name]=x.sets_data;});
+    }catch(e){}
+  }
+  buildExList(type);
+  showPage('Log');
+}
+
+function buildExList(type) {
+  var exs=exercises.filter(function(e){return e.type===type;});
+  document.getElementById('exList').innerHTML=exs.map(exCard).join('');
+}
+
+function exCard(ex) {
+  var last=logLastData[ex.name];
+  var lastSum=last&&last.length?sumSets(ex,last[0]):'';
+  var rows='';
+  for(var i=0;i<(ex.sets||3);i++){
+    var ls=last&&last[i]?last[i]:null;
+    if(ex.has_weight===2){
+      var v=ls?ls.minutes:'';
+      rows+='<div class="sr"><span class="sl2">S'+(i+1)+'</span><div class="ig"><button class="ic" onclick="inc(\'mt_'+ex.id+'_'+i+'\',-1)">-</button><input type="number" id="mt_'+ex.id+'_'+i+'" value="'+v+'" placeholder="'+(v||'0')+'"><span class="u">min</span><button class="ic" onclick="inc(\'mt_'+ex.id+'_'+i+'\',1)">+</button></div></div>';
+    } else if(ex.has_weight===1){
+      var w=ls?ls.weight:'', rp=ls?ls.reps:'';
+      rows+='<div class="sr"><span class="sl2">S'+(i+1)+'</span><div class="ig"><button class="ic" onclick="inc(\'w_'+ex.id+'_'+i+'\',-2.5)">-</button><input type="number" id="w_'+ex.id+'_'+i+'" value="'+w+'" placeholder="'+(w||'kg')+'" style="max-width:52px;text-align:center"><span class="u">kg x</span><input type="number" id="r_'+ex.id+'_'+i+'" value="'+rp+'" placeholder="'+(rp||'rep')+'" style="max-width:46px;text-align:center"><button class="ic" onclick="inc(\'r_'+ex.id+'_'+i+'\',1)">+</button></div></div>';
+    } else {
+      var rp2=ls?ls.reps:'';
+      rows+='<div class="sr"><span class="sl2">S'+(i+1)+'</span><div class="ig"><button class="ic" onclick="inc(\'rp_'+ex.id+'_'+i+'\',-1)">-</button><input type="number" id="rp_'+ex.id+'_'+i+'" value="'+rp2+'" placeholder="'+(rp2||'reps')+'"><span class="u">reps</span><button class="ic" onclick="inc(\'rp_'+ex.id+'_'+i+'\',1)">+</button></div></div>';
+    }
+  }
+  return '<div class="exc"><div class="exh"><div class="exn">'+ex.name+'</div>'+(lastSum?'<div class="exl">&#8593; '+lastSum+'</div>':'')+'</div><div class="sw">'+rows+'</div></div>';
+}
+
+function sumSets(ex,s){
+  if(!s) return '';
+  if(ex.has_weight===2) return s.minutes+'min';
+  if(ex.has_weight===1) return s.weight+'kg x '+s.reps;
+  return s.reps+' reps';
+}
+
+function inc(id,d){
+  var el=document.getElementById(id); if(!el) return;
+  el.value=Math.max(0,(parseFloat(el.value)||0)+d);
+}
+
+async function saveSession() {
+  var exs=exercises.filter(function(e){return e.type===logType;});
+  var today=new Date().toISOString().split('T')[0];
+  try{
+    var res=await sb('sessions','POST',{type:logType,date:today});
+    var sess=res[0]||res;
+    for(var j=0;j<exs.length;j++){
+      var ex=exs[j], sets=[];
+      for(var i=0;i<(ex.sets||3);i++){
+        if(ex.has_weight===2){
+          var vel=document.getElementById('mt_'+ex.id+'_'+i); if(vel&&vel.value) sets.push({minutes:parseFloat(vel.value)});
+        } else if(ex.has_weight===1){
+          var wel=document.getElementById('w_'+ex.id+'_'+i); var rel=document.getElementById('r_'+ex.id+'_'+i);
+          if((wel&&wel.value)||(rel&&rel.value)) sets.push({weight:parseFloat(wel&&wel.value||0),reps:parseInt(rel&&rel.value||0)});
+        } else {
+          var rp=document.getElementById('rp_'+ex.id+'_'+i); if(rp&&rp.value) sets.push({reps:parseInt(rp.value)});
+        }
+      }
+      if(sets.length) await sb('session_exercises','POST',{session_id:sess.id,exercise_name:ex.name,sets_data:sets});
+    }
+    toast('Training gespeichert!');
+    await loadAll();
+    goHome();
+  }catch(e){toast('Fehler: '+e.message.slice(0,60));}
+}
+
+function goHome(){showPage('Home');}
+
+function renderHistory() {
+  var list=histFilter==='all'?sessions:sessions.filter(function(s){return s.type===histFilter;});
+  var el=document.getElementById('histList');
+  if(!list.length){el.innerHTML='<div class="empty"><div class="ei">&#128197;</div>Noch keine Trainings</div>';return;}
+  el.innerHTML=list.map(function(s){
+    return '<div class="hi"><div class="hh" onclick="toggleHist('+s.id+')"><div class="dot '+s.type+'"></div><div class="hinfo"><div class="hn">'+s.type.toUpperCase()+' DAY</div><div class="hd2">'+fDateFull(s.date)+'</div></div><span class="hchev" id="hc'+s.id+'">&#8250;</span></div><div class="hdet" id="hd'+s.id+'"></div></div>';
+  }).join('');
+}
+
+async function toggleHist(id) {
+  var d=document.getElementById('hd'+id), c=document.getElementById('hc'+id);
+  if(d.classList.contains('open')){d.classList.remove('open');c.classList.remove('open');return;}
+  d.classList.add('open'); c.classList.add('open');
+  if(d.dataset.loaded) return;
+  d.innerHTML='<div class="ld" style="padding:14px"><div class="sp"></div></div>';
+  try{
+    var data=await sb('session_exercises?session_id=eq.'+id+'&order=id.asc');
+    d.dataset.loaded='1';
+    if(!data.length){d.innerHTML='<div style="padding:10px 0;font-size:12px;color:var(--muted)">Keine Daten</div>';return;}
+    d.innerHTML=data.map(function(se){
+      var sd=se.sets_data||[];
+      var val=sd.map(function(s){
+        if(s.minutes!==undefined) return s.minutes+'min';
+        if(s.weight!==undefined) return s.weight+'kg x '+s.reps;
+        return s.reps+' reps';
+      }).join(' | ');
+      return '<div class="her"><span class="hen">'+se.exercise_name+'</span><span class="hev">'+val+'</span></div>';
+    }).join('');
+  }catch(e){d.innerHTML='<div style="padding:10px 0;font-size:12px;color:#ff5566">Fehler</div>';}
+}
+
+function setFilter(f){
+  histFilter=f;
+  ['all','push','pull','legs'].forEach(function(t){
+    document.getElementById('f'+cap(t)).classList.toggle('on',t===f);
+  });
+  renderHistory();
+}
+
+function renderChartChips(){
+  var exs=exercises.filter(function(e){return e.type===chartType;});
+  document.getElementById('chartChips').innerHTML=exs.map(function(ex){
+    return '<button class="chip'+(chartEx===ex.name?' on':'')+'" onclick="pickChartEx(\''+ex.name+'\')">'+ex.name+'</button>';
+  }).join('');
+}
+
+async function pickChartEx(name) {
+  chartEx=name; renderChartChips();
+  var el=document.getElementById('chartArea');
+  el.innerHTML='<div class="ld"><div class="sp"></div>Laedt...</div>';
+  var typeSessions=sessions.filter(function(s){return s.type===chartType;}).slice().reverse();
+  if(!typeSessions.length){el.innerHTML='<div class="empty">Noch keine Daten</div>';return;}
+  var points=[];
+  for(var i=0;i<typeSessions.length;i++){
+    try{
+      var rows=await sb('session_exercises?session_id=eq.'+typeSessions[i].id+'&exercise_name=eq.'+encodeURIComponent(name));
+      if(rows.length&&rows[0].sets_data&&rows[0].sets_data.length){
+        var p=Object.assign({date:typeSessions[i].date},rows[0].sets_data[0]);
+        points.push(p);
+      }
+    }catch(e){}
+  }
+  if(!points.length){el.innerHTML='<div class="empty">Noch keine Daten fuer diese Uebung</div>';return;}
+  var ex=exercises.find(function(e){return e.name===name;});
+  drawCharts(points,ex,el);
+}
+
+function drawCharts(pts,ex,el){
+  Object.values(myCharts).forEach(function(c){c.destroy();}); myCharts={};
+  var labels=pts.map(function(p){return fDateShort(p.date);});
+  if(ex.has_weight===2){
+    el.innerHTML=ccard(ex.name,'Minuten','chart1');
+    myCharts.c1=mkChart('chart1',labels,pts.map(function(p){return p.minutes;}),'min','#c8ff00');
+  } else if(ex.has_weight===1){
+    el.innerHTML=ccard(ex.name,'Gewicht (kg)','chart1')+ccard(ex.name,'Wiederholungen','chart2');
+    myCharts.c1=mkChart('chart1',labels,pts.map(function(p){return p.weight;}),'kg','#5c9eff');
+    myCharts.c2=mkChart('chart2',labels,pts.map(function(p){return p.reps;}),'Reps','#c8ff00');
+  } else {
+    el.innerHTML=ccard(ex.name,'Wiederholungen','chart1');
+    myCharts.c1=mkChart('chart1',labels,pts.map(function(p){return p.reps;}),'Reps','#b06aff');
+  }
+}
+
+function ccard(name,sub,id){return '<div class="cc"><div class="ct">'+name+'</div><div class="cs">'+sub+'</div><div class="cw"><canvas id="'+id+'"></canvas></div></div>';}
+
+function mkChart(id,labels,values,label,color){
+  return new Chart(document.getElementById(id).getContext('2d'),{
+    type:'line',
+    data:{labels:labels,datasets:[{label:label,data:values,borderColor:color,backgroundColor:color+'22',fill:true,tension:.4,pointBackgroundColor:color,pointRadius:4,pointHoverRadius:6,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#5a5a72',font:{size:10}},grid:{color:'#252535'}},y:{ticks:{color:'#5a5a72',font:{size:10}},grid:{color:'#252535'}}}}
+  });
+}
+
+function setChartType(t){
+  chartType=t; chartEx=null;
+  ['push','pull','legs'].forEach(function(x){document.getElementById('ct'+cap(x)).classList.toggle('on',x===t);});
+  renderChartChips();
+  document.getElementById('chartArea').innerHTML='<div class="empty"><div class="ei">&#128200;</div>Uebung auswaehlen</div>';
+}
+
+function openAddEx(){document.getElementById('nxName').value='';openM('mAddEx');}
+
+async function saveNewEx(){
+  var name=document.getElementById('nxName').value.trim();
+  if(!name) return;
+  try{
+    await sb('exercises','POST',{name:name,type:document.getElementById('nxType').value,has_weight:parseInt(document.getElementById('nxWeight').value),sets:parseInt(document.getElementById('nxSets').value),sort_order:99,active:true});
+    closeM('mAddEx'); toast('Uebung hinzugefuegt'); await loadAll();
+  }catch(e){toast('Fehler: '+e.message.slice(0,50));}
+}
+
+function openManageEx(){
+  document.getElementById('manageList').innerHTML=exercises.map(function(ex){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:13px">'+ex.name+'</div><div style="font-size:11px;color:var(--muted)">'+ex.type+' - '+ex.sets+' Sets</div></div><button onclick="toggleEx('+ex.id+','+(!ex.active)+')" style="background:'+(ex.active?'var(--accent)':'var(--bg3)')+';color:'+(ex.active?'#000':'var(--muted)')+';border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit">'+(ex.active?'Aktiv':'Inaktiv')+'</button></div>';
+  }).join('');
+  openM('mManageEx');
+}
+
+async function toggleEx(id,active){
+  try{await sb('exercises?id=eq.'+id,'PATCH',{active:active});await loadAll();openManageEx();}catch(e){}
+}
+
+async function doExport(){
+  try{
+    var s=await sb('sessions?order=date.desc');
+    var se=await sb('session_exercises?order=id.desc');
+    var blob=new Blob([JSON.stringify({sessions:s,session_exercises:se},null,2)],{type:'application/json'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='gymtracker-export.json'; a.click();
+    toast('Export gestartet');
+  }catch(e){toast('Export fehlgeschlagen');}
+}
+
+function resetConn(){try{localStorage.removeItem('gt_url');localStorage.removeItem('gt_key');}catch(e){}location.reload();}
+
+async function doImportSeed(){
+  // Schutz vor Doppel-Import: pruefe ob diese Daten schon existieren
+  var existing = sessions.filter(function(s){
+    return ['2026-05-21','2026-06-05','2026-05-17','2026-06-02'].indexOf(s.date)>=0;
+  });
+  if(existing.length>0){
+    toast('Trainings bereits importiert');
+    return;
+  }
+  toast('Importiere...');
+  await seedSessions();
+  await loadAll();
+  toast('Letzte Trainings importiert!');
+}
+
+function showPage(name){
+  ['Home','Log','History','Charts','Settings'].forEach(function(p){
+    document.getElementById('pg'+p).classList.toggle('active',p===name);
+  });
+  ['Home','History','Charts','Settings'].forEach(function(p){
+    var btn=document.getElementById('nb'+p); if(btn) btn.classList.toggle('active',p===name);
+  });
+}
+
+function openM(id){document.getElementById(id).classList.add('open');}
+function closeM(id){document.getElementById(id).classList.remove('open');}
+
+document.querySelectorAll('.ov').forEach(function(o){
+  o.addEventListener('click',function(e){if(e.target===o) o.classList.remove('open');});
+});
+
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2400);}
+
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function fDateFull(d){return new Date(d+'T12:00:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'long',year:'numeric'});}
+function fDateShort(d){return new Date(d+'T12:00:00').toLocaleDateString('de-DE',{day:'numeric',month:'numeric'});}
+
+window.addEventListener('load',function(){
+  var url,key;
+  try{url=localStorage.getItem('gt_url');key=localStorage.getItem('gt_key');}catch(e){}
+  if(url&&key){SB_URL=url;SB_KEY=key;launchApp();}
+});
+</script>
+</body>
+</html>
